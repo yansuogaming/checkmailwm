@@ -28,6 +28,11 @@ namespace CheckMailWM2.Services
                 if (string.IsNullOrWhiteSpace(line)) continue;
 
                 string email = EmailExtractor.ExtractEmail(line);
+                // Bỏ qua dòng không có email hợp lệ
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    continue;
+                }
 
                 items.Add(new AccountItem
                 {
@@ -35,8 +40,8 @@ namespace CheckMailWM2.Services
                     RowIndex = i + 1,
                     RawData = line,
                     ExtractedEmail = email,
-                    Status = string.IsNullOrWhiteSpace(email) ? CheckStatus.Error : CheckStatus.Pending,
-                    Note = string.IsNullOrWhiteSpace(email) ? "Invalid Email" : ""
+                    Status = CheckStatus.Pending,
+                    Note = ""
                 });
             }
 
@@ -68,6 +73,8 @@ namespace CheckMailWM2.Services
             if (hasHeader) startRow = 2;
 
             int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 0;
+            int lastColIndex = worksheet.LastColumnUsed()?.ColumnNumber() ?? 1;
+
             for (int r = startRow; r <= lastRowNumber; r++)
             {
                 var row = worksheet.Row(r);
@@ -77,9 +84,13 @@ namespace CheckMailWM2.Services
                 string fullRowText = string.Join(" | ", cellValues);
                 string email = EmailExtractor.ExtractEmail(fullRowText);
 
-                int lastColIndex = row.LastCellUsed()?.Address.ColumnNumber ?? 1;
-                int targetCol = lastColIndex + 1;
+                // Bỏ qua dòng không có email hợp lệ
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    continue;
+                }
 
+                int targetCol = lastColIndex + 1;
                 bool alreadyChecked = false;
                 for (int c = 1; c <= lastColIndex; c++)
                 {
@@ -103,8 +114,8 @@ namespace CheckMailWM2.Services
                     RowIndex = r,
                     RawData = fullRowText,
                     ExtractedEmail = email,
-                    Status = string.IsNullOrWhiteSpace(email) ? CheckStatus.Error : CheckStatus.Pending,
-                    Note = string.IsNullOrWhiteSpace(email) ? "Invalid Email" : "",
+                    Status = CheckStatus.Pending,
+                    Note = "",
                     TargetStatusColumnIndex = targetCol
                 });
             }

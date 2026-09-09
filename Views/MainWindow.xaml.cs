@@ -164,6 +164,45 @@ namespace CheckMailWM2.Views
                 bool skipChecked = chkSkipCheckedSheet.IsChecked == true;
                 int id = 1;
 
+                // 1. Xác định cột ghi Status trên toàn Sheet (để kết quả được ghi vào đúng 1 cột thẳng hàng)
+                int detectedStatusCol = -1;
+                int maxColsInSheet = 0;
+
+                for (int r = 0; r < Math.Min(rawData.Count, 5); r++)
+                {
+                    var row = rawData[r];
+                    for (int c = 0; c < row.Count; c++)
+                    {
+                        string header = row[c].Trim();
+                        if (header.Equals("Status", StringComparison.OrdinalIgnoreCase) ||
+                            header.Equals("Trạng thái", StringComparison.OrdinalIgnoreCase) ||
+                            header.Equals("Trạng Thái", StringComparison.OrdinalIgnoreCase) ||
+                            header.Equals("Result", StringComparison.OrdinalIgnoreCase) ||
+                            header.Equals("Kết quả", StringComparison.OrdinalIgnoreCase) ||
+                            header.Equals("Walmart", StringComparison.OrdinalIgnoreCase))
+                        {
+                            detectedStatusCol = c + 1;
+                            break;
+                        }
+                    }
+                    if (detectedStatusCol > 0) break;
+                }
+
+                foreach (var row in rawData)
+                {
+                    for (int c = row.Count - 1; c >= 0; c--)
+                    {
+                        if (!string.IsNullOrWhiteSpace(row[c]))
+                        {
+                            if (c + 1 > maxColsInSheet)
+                                maxColsInSheet = c + 1;
+                            break;
+                        }
+                    }
+                }
+
+                int defaultStatusCol = detectedStatusCol > 0 ? detectedStatusCol : (maxColsInSheet > 0 ? maxColsInSheet + 1 : 2);
+
                 int startRowIndex = 0;
                 if (rawData.Count > 1)
                 {
@@ -182,21 +221,17 @@ namespace CheckMailWM2.Views
                     var rowCells = rawData[r];
                     if (rowCells.All(string.IsNullOrWhiteSpace)) continue;
 
+                    int actualSheetRowNum = r + 1; // Số thứ tự dòng thực tế trên Google Sheet (1-indexed)
                     string fullLine = string.Join(" | ", rowCells.Where(c => !string.IsNullOrWhiteSpace(c)));
                     string email = EmailExtractor.ExtractEmail(fullLine);
-                    int actualSheetRowNum = r + 1;
 
-                    int lastFilledCol = 1;
-                    for (int c = rowCells.Count - 1; c >= 0; c--)
+                    // CHỈ NẠP DÒNG NÀO CÓ EMAIL HỢP LỆ, DÒNG KHÔNG CÓ EMAIL SẼ BỎ QUA HOÀN TOÀN
+                    if (string.IsNullOrWhiteSpace(email))
                     {
-                        if (!string.IsNullOrWhiteSpace(rowCells[c]))
-                        {
-                            lastFilledCol = c + 1;
-                            break;
-                        }
+                        continue;
                     }
 
-                    int targetStatusCol = lastFilledCol == 1 ? 2 : lastFilledCol + 1;
+                    int targetStatusCol = defaultStatusCol;
                     bool alreadyChecked = false;
                     for (int c = 0; c < rowCells.Count; c++)
                     {
@@ -220,8 +255,8 @@ namespace CheckMailWM2.Views
                         RowIndex = actualSheetRowNum,
                         RawData = fullLine,
                         ExtractedEmail = email,
-                        Status = string.IsNullOrWhiteSpace(email) ? CheckStatus.Error : CheckStatus.Pending,
-                        Note = string.IsNullOrWhiteSpace(email) ? "Invalid Email" : "",
+                        Status = CheckStatus.Pending,
+                        Note = "",
                         TargetStatusColumnIndex = targetStatusCol
                     });
                 }
