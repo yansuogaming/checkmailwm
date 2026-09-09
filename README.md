@@ -41,13 +41,13 @@
 - Tùy chỉnh khoảng thời gian trễ ngẫu nhiên (Delay) giữa mỗi lần kiểm tra để mô phỏng hành vi người dùng thật và giảm nguy cơ bị khóa IP.
 - Quản lý trạng thái thông minh: Hỗ trợ **Bắt đầu**, **Tạm dừng**, **Tiếp tục** và **Dừng lại khẩn cấp** mà không làm mất dữ liệu.
 
-### 3. 🛡️ Tự Động Giải Captcha PerimeterX (Press & Hold Solver)
-- **Tự động nhấn giữ chuột thông minh (Auto Press & Hold)**: Sử dụng giao thức **Chrome DevTools Protocol (CDP)** (`Input.dispatchMouseEvent`) để tạo sự kiện giữ chuột vật lý nguyên bản (`isTrusted = true`) kèm chuyển động rung vi mô (micro-jitter ±1.5px) mô phỏng bàn tay người thật.
-- **Thời gian giữ linh hoạt tối đa 15 giây**: Hệ thống liên tục kiểm tra trạng thái DOM, khi nhận diện Captcha đã giải xong hoặc trang đăng nhập xuất hiện, hệ thống sẽ **ngay lập tức tự động nhả chuột** để tiếp tục tiến trình sớm nhất.
-- **Hoạt động đa tầng**:
-  - **Trong luồng quét ngầm**: Tự động phát hiện và giải trực tiếp mà không làm gián đoạn tiến trình quét.
-  - **Trong cửa sổ trực quan**: Tự động giải khi mở cửa sổ làm ấm phiên, tích hợp nút bấm **`🤖 Tự giải Captcha (15s)`** cho phép người dùng kích hoạt thủ công bất kỳ lúc nào.
-- **Đồng bộ phiên làm việc**: Dữ liệu phiên được lưu trữ trên profile dùng chung `UserData_Shared`, vượt 1 lần dùng chung cho tất cả các luồng.
+### 3. 🛡️ Tự Động Giải Captcha PerimeterX (Human-like Mouse Trajectory)
+- **Mô phỏng di chuột người thật (Human-like Bezier Curve)**: Di chuyển con trỏ chuột theo quỹ đạo cong Cubic Bezier tự nhiên, kết hợp gia tốc phi tuyến (Easing / Fitts's Law: khởi đầu chậm, lướt nhanh ở giữa, giảm tốc nhẹ nhàng khi đến nút).
+- **Rung lắc vi mô sinh học (Muscle Tremors & Hesitation)**: Tạo độ rung tay sinh học ($\pm 1.2\text{px}$) trong lúc di chuyển và ngập ngừng dừng quan sát ($140\text{ms} - 260\text{ms}$) trước khi bấm.
+- **Tương tác vật lý nguyên bản qua CDP (`isTrusted = true`)**: Sử dụng Chrome DevTools Protocol (`Input.dispatchMouseEvent`) để tạo sự kiện giữ chuột vật lý hoàn hảo, không bị hệ thống chống bot phát hiện.
+- **Thời gian giữ linh hoạt tối đa 15 giây**: Liên tục kiểm tra trạng thái DOM, khi nhận diện Captcha đã giải xong, hệ thống sẽ **ngay lập tức nhả chuột tự động** và lướt nhẹ ra khỏi nút như phản xạ người thật.
+- **Con trỏ ảo trực quan (Visual Ghost Cursor)**: Hiển thị chấm con trỏ màu đỏ/xanh lá chuyển động mượt mà trên giao diện trình duyệt để người dùng dễ dàng theo dõi trực tiếp.
+- **Hoạt động đa tầng**: Hoạt động mượt mà trên cả các luồng quét ngầm lẫn cửa sổ làm ấm phiên (với nút bấm kích hoạt **`🤖 Tự giải Captcha (15s)`**).
 
 ### 4. 🧠 Nhận Diện Trạng Thái Email Toàn Diện
 Engine phân tích phản hồi DOM của Walmart chính xác:
