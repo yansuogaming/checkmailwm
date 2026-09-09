@@ -1,0 +1,2 @@
+# checkmailwm
+Check mail wm
