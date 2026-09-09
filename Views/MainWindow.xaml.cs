@@ -231,12 +231,36 @@ namespace CheckMailWM2.Views
                         continue;
                     }
 
+                    // Tìm vị trí cột chứa email chính trong dòng để tránh nhầm lẫn với trạng thái
+                    int emailColIndex = -1;
+                    for (int c = 0; c < rowCells.Count; c++)
+                    {
+                        if (EmailExtractor.ExtractEmail(rowCells[c]).Equals(email, StringComparison.OrdinalIgnoreCase))
+                        {
+                            emailColIndex = c;
+                            break;
+                        }
+                    }
+
                     int targetStatusCol = defaultStatusCol;
                     bool alreadyChecked = false;
                     for (int c = 0; c < rowCells.Count; c++)
                     {
+                        // Tuyệt đối không kiểm tra trạng thái ở cột email chính của dòng này
+                        if (c == emailColIndex) continue;
+
                         string val = rowCells[c].Trim();
+                        if (string.IsNullOrWhiteSpace(val)) continue;
+
                         if (EmailExtractor.IsAlreadyCheckedStatus(val))
+                        {
+                            alreadyChecked = true;
+                            targetStatusCol = c + 1;
+                            break;
+                        }
+
+                        // Nếu ở một cột khác (khác cột email chính) có chứa email (do lần trước ghi Not Registered thẳng ra)
+                        if (c != emailColIndex && (c + 1 == defaultStatusCol || c > emailColIndex) && EmailExtractor.ContainsEmail(val))
                         {
                             alreadyChecked = true;
                             targetStatusCol = c + 1;

@@ -90,12 +90,33 @@ namespace CheckMailWM2.Services
                     continue;
                 }
 
+                int emailColIndex = -1;
+                for (int c = 1; c <= lastColIndex; c++)
+                {
+                    if (EmailExtractor.ExtractEmail(row.Cell(c).GetString()).Equals(email, StringComparison.OrdinalIgnoreCase))
+                    {
+                        emailColIndex = c;
+                        break;
+                    }
+                }
+
                 int targetCol = lastColIndex + 1;
                 bool alreadyChecked = false;
                 for (int c = 1; c <= lastColIndex; c++)
                 {
+                    if (c == emailColIndex) continue; // Bỏ qua cột chứa email chính
+
                     string val = row.Cell(c).GetString().Trim();
+                    if (string.IsNullOrWhiteSpace(val)) continue;
+
                     if (EmailExtractor.IsAlreadyCheckedStatus(val))
+                    {
+                        alreadyChecked = true;
+                        targetCol = c;
+                        break;
+                    }
+
+                    if (c != emailColIndex && c > emailColIndex && EmailExtractor.ContainsEmail(val))
                     {
                         alreadyChecked = true;
                         targetCol = c;
