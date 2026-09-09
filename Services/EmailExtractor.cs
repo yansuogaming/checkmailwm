@@ -48,6 +48,12 @@ namespace CheckMailWM2.Services
 
             string normalized = value.Trim().ToLowerInvariant();
 
+            // Nếu cột trạng thái chứa email (do Not Registered điền thẳng email)
+            if (normalized.Contains("@") && normalized.Contains("."))
+            {
+                return true;
+            }
+
             // Từ khóa tiếng Anh
             if (normalized == "registered" || 
                 normalized == "not registered" || 

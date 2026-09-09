@@ -120,7 +120,8 @@ namespace CheckMailWM2.Services
             var lines = new List<string>();
             foreach (var item in items)
             {
-                lines.Add($"{item.RawData} | {item.Status.ToEnglishString()} | {item.CheckedTime:yyyy-MM-dd HH:mm:ss}");
+                string statusText = item.Status.ToOutputString(!string.IsNullOrWhiteSpace(item.ExtractedEmail) ? item.ExtractedEmail : item.RawData);
+                lines.Add($"{item.RawData} | {statusText} | {item.CheckedTime:yyyy-MM-dd HH:mm:ss}");
             }
             await File.WriteAllLinesAsync(outputPath, lines, Encoding.UTF8);
         }
@@ -159,18 +160,18 @@ namespace CheckMailWM2.Services
             {
                 int r = item.RowIndex > 0 ? item.RowIndex : (item.Id + 1);
                 int targetCol = item.TargetStatusColumnIndex > 0 ? item.TargetStatusColumnIndex : statusCol;
-                string englishStatus = item.Status.ToEnglishString();
+                string statusText = item.Status.ToOutputString(!string.IsNullOrWhiteSpace(item.ExtractedEmail) ? item.ExtractedEmail : item.RawData);
 
                 if (maxCol == 0)
                 {
                     worksheet.Cell(r, 1).Value = item.RawData;
                     worksheet.Cell(r, 2).Value = item.ExtractedEmail;
-                    worksheet.Cell(r, 3).Value = englishStatus;
+                    worksheet.Cell(r, 3).Value = statusText;
                     worksheet.Cell(r, 4).Value = item.CheckedTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
                 }
                 else
                 {
-                    worksheet.Cell(r, targetCol).Value = englishStatus;
+                    worksheet.Cell(r, targetCol).Value = statusText;
                     worksheet.Cell(r, targetCol + 1).Value = item.CheckedTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
                 }
 

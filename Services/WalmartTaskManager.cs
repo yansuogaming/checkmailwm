@@ -291,13 +291,13 @@ namespace CheckMailWM2.Services
                             OnItemUpdated?.Invoke(currentItem);
                             OnProgressChanged?.Invoke(total, checkedCount, registeredCount, notRegisteredCount, suspendedCount, errorCount);
 
-                            // Nếu là Google Sheet và có bật lưu tự động, cập nhật trạng thái tiếng Anh và mã màu
+                            // Nếu là Google Sheet và có bật lưu tự động, cập nhật trạng thái tiếng Anh (hoặc điền thẳng email nếu NotRegistered) và mã màu
                             if (autoSaveToGoogleSheet && !string.IsNullOrWhiteSpace(googleScriptUrl) && !string.IsNullOrWhiteSpace(googleSheetName) && currentItem.RowIndex > 0)
                             {
                                 int statusCol = currentItem.TargetStatusColumnIndex > 0 ? currentItem.TargetStatusColumnIndex : 2;
-                                string englishStatus = currentItem.Status.ToEnglishString();
+                                string outputStatus = currentItem.Status.ToOutputString(!string.IsNullOrWhiteSpace(currentItem.ExtractedEmail) ? currentItem.ExtractedEmail : currentItem.RawData);
                                 string hexColor = currentItem.Status.ToHexColor();
-                                _ = _gasService.UpdateCellStatusAsync(googleScriptUrl, googleSheetName, currentItem.RowIndex, statusCol, englishStatus, hexColor);
+                                _ = _gasService.UpdateCellStatusAsync(googleScriptUrl, googleSheetName, currentItem.RowIndex, statusCol, outputStatus, hexColor);
                             }
 
                             if (delayMs > 0 && !_cts.Token.IsCancellationRequested)

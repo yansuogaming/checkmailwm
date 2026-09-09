@@ -95,8 +95,8 @@ function doPost(e) {
             cell.setFontColor(item.color).setFontWeight("bold");
           } else if (item.value === "Registered") {
             cell.setFontColor("#16a34a").setFontWeight("bold"); // Xanh lá
-          } else if (item.value === "Not Registered") {
-            cell.setFontColor("#d97706").setFontWeight("bold"); // Cam
+          } else if (item.value === "Not Registered" || (typeof item.value === "string" && item.value.indexOf("@") !== -1)) {
+            cell.setFontColor("#d97706").setFontWeight("bold"); // Cam (Amber) cho Chưa đăng ký
           } else if (item.value === "Suspended") {
             cell.setFontColor("#9333ea").setFontWeight("bold"); // Tím
           } else if (item.value === "Error") {

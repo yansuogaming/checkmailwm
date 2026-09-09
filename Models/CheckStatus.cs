@@ -52,6 +52,20 @@ namespace CheckMailWM2.Models
         }
 
         /// <summary>
+        /// Chuẩn kết quả khi xuất ra Google Sheet hoặc file Excel/TXT.
+        /// Đối với email Chưa đăng ký (Not Registered), điền thẳng địa chỉ email ra ngoài theo yêu cầu.
+        /// </summary>
+        public static string ToOutputString(this CheckStatus status, string? email = null)
+        {
+            if (status == CheckStatus.NotRegistered && !string.IsNullOrWhiteSpace(email))
+            {
+                return email;
+            }
+
+            return status.ToEnglishString();
+        }
+
+        /// <summary>
         /// Mã màu Hex tương ứng khi tô màu trên Google Sheet
         /// </summary>
         public static string ToHexColor(this CheckStatus status)
