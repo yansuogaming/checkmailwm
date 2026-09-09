@@ -97,7 +97,7 @@ namespace CheckMailWM2.Services
                     // Kiểm tra xem có dính Captcha không và tự động giải
                     if (_webView != null && await PerimeterXSolver.IsCaptchaPresentAsync(_webView))
                     {
-                        OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút Press & Hold trong tối đa 15s...");
+                        OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút (sẽ tự nhả ngay khi hiện 3 chấm)...");
                         bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(_webView, msg => OnLog?.Invoke($"[Luồng {_threadId}] {msg}"), cancellationToken, maxHoldSeconds: 15);
                         if (solved)
                         {
@@ -337,7 +337,7 @@ namespace CheckMailWM2.Services
                     // Chỉ xác nhận là Captcha nếu đã qua 1.5s (trang mới đã tải từ mạng xong)
                     if (sw.ElapsedMilliseconds > 1500)
                     {
-                        OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút Press & Hold (tối đa 15s)...");
+                        OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút (sẽ tự nhả ngay khi hiện 3 chấm)...");
                         if (_webView != null)
                         {
                             bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(_webView, msg => OnLog?.Invoke($"[Luồng {_threadId}] {msg}"), ct, maxHoldSeconds: 15);
@@ -589,7 +589,7 @@ namespace CheckMailWM2.Services
                         }
                         if (status == "CAPTCHA")
                         {
-                            OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX sau khi submit! Đang tự động nhấn giữ nút Press & Hold (tối đa 15s)...");
+                            OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX sau khi submit! Đang tự động nhấn giữ nút (sẽ tự nhả ngay khi hiện 3 chấm)...");
                             if (_webView != null)
                             {
                                 bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(_webView, msg => OnLog?.Invoke($"[Luồng {_threadId}] {msg}"), ct, maxHoldSeconds: 15);

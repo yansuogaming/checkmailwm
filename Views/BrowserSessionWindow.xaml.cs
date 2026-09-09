@@ -155,7 +155,7 @@ namespace CheckMailWM2.Views
             {
                 btnAutoSolve.IsEnabled = false;
                 txtStatus.Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36));
-                txtStatus.Text = "🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút Press & Hold (tối đa 15s)...";
+                txtStatus.Text = "🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút (sẽ tự nhả ngay khi hiện 3 chấm)...";
 
                 bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(
                     webView,
@@ -173,7 +173,7 @@ namespace CheckMailWM2.Views
                 else if (!solved && !_isClosing)
                 {
                     txtStatus.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
-                    txtStatus.Text = "⚠️ Chưa vượt qua được Captcha sau 15s. Bạn có thể bấm [Tự giải Captcha] để thử lại hoặc tự tay nhấn giữ.";
+                    txtStatus.Text = "⚠️ Chưa vượt qua được Captcha. Bạn có thể bấm [Tự giải Captcha] để thử lại hoặc tự tay nhấn giữ.";
                 }
             }
             catch (Exception ex)
