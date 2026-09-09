@@ -1,0 +1,6 @@
+Oak Park | MI | 48237 | 3134337200 | annettetidwell62@yahoo.com | test_registered
+Brooklyn | NY | 11201 | 7185550199 | yansuogaming@gmail.com | test_not_registered
+Dallas | TX | 75001 | 2145550123 | hajosa4m@gmail.com | 
+Chicago | IL | 60601 | 3125550144 | sample_user_walmart@hotmail.com
+San Jose | CA | 95101 | 4085550177 | vip_client_2026@gmail.com | ready
+Invalid Line Without Email | 123456 | Some City

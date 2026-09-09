@@ -1,0 +1,32 @@
+## =========================================================================
+## .gitignore cho dự án C# / .NET 10 WPF (Walmart Email Checker Pro)
+## =========================================================================
+
+# Build and Publish Output Directories
+[Bb]in/
+[Oo]bj/
+publish/
+
+# Runtime Profiles & Cache (Tránh lưu cookie/profile phiên WebView2 người dùng)
+UserData_Shared/
+EBWebView/
+
+# Visual Studio & JetBrains Rider Cache
+.vs/
+.idea/
+*.user
+*.userprefs
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Temporary & Log Files
+*.log
+*.tmp
+*.bak
+*.cache
+
+# OS Generated Files
+Thumbs.db
+Desktop.ini
+.DS_Store

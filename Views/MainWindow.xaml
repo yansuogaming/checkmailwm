@@ -1,0 +1,621 @@
+<ui:FluentWindow x:Class="CheckMailWM2.Views.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="Walmart Email Checker Pro v2.0"
+                 Height="860" Width="1240"
+                 MinHeight="700" MinWidth="1050"
+                 WindowStartupLocation="CenterScreen"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica">
+
+    <ui:FluentWindow.Resources>
+        <!-- Custom TabItem Style supporting Dynamic Light & Dark Theme -->
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                BorderThickness="0,0,0,2"
+                                Padding="{TemplateBinding Padding}"
+                                Margin="0,0,6,0"
+                                Cursor="Hand">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </ui:FluentWindow.Resources>
+
+    <Grid Background="{DynamicResource ApplicationBackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Hidden Offscreen Container for Background WebView2 Workers -->
+        <Canvas Grid.Row="0" Width="0" Height="0" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Grid x:Name="HiddenHostContainer" Width="1280" Height="800" Canvas.Left="-5000" Canvas.Top="-5000" />
+        </Canvas>
+
+        <!-- TitleBar with Theme Switcher -->
+        <ui:TitleBar Grid.Row="0"
+                     Title="Walmart Email Checker Pro v2.0"
+                     Icon="/app_icon.ico">
+            <ui:TitleBar.TrailingContent>
+                <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                    <ui:Button x:Name="btnThemeToggle"
+                               Appearance="Transparent"
+                               Icon="{ui:SymbolIcon WeatherMoon20}"
+                               ToolTip="Chuyển đổi giao diện Sáng / Tối"
+                               Click="BtnThemeToggle_Click" />
+                </StackPanel>
+            </ui:TitleBar.TrailingContent>
+        </ui:TitleBar>
+
+        <!-- Row 1: KPI Summary Cards -->
+        <Grid Grid.Row="1" Margin="16,6,16,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Card 1: Total -->
+            <Border Grid.Column="0" Margin="4" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="#0284C7" BorderThickness="0,3,0,0" Padding="12,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Mail20" Foreground="#0284C7" Margin="0,0,6,0" />
+                        <TextBlock Text="TỔNG SỐ" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="txtStatTotal" Text="0" Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Card 2: Checked -->
+            <Border Grid.Column="1" Margin="4" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="#2563EB" BorderThickness="0,3,0,0" Padding="12,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="ClipboardTask20" Foreground="#2563EB" Margin="0,0,6,0" />
+                        <TextBlock Text="ĐÃ KIỂM TRA" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="txtStatChecked" Text="0" Foreground="{DynamicResource TextFillColorPrimaryBrush}" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Card 3: Registered -->
+            <Border Grid.Column="2" Margin="4" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="#059669" BorderThickness="0,3,0,0" Padding="12,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="CheckmarkCircle20" Foreground="#059669" Margin="0,0,6,0" />
+                        <TextBlock Text="ĐÃ ĐĂNG KÝ" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="txtStatRegistered" Text="0" Foreground="#059669" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Card 4: Not Registered -->
+            <Border Grid.Column="3" Margin="4" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="#D97706" BorderThickness="0,3,0,0" Padding="12,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="PersonAdd20" Foreground="#D97706" Margin="0,0,6,0" />
+                        <TextBlock Text="CHƯA ĐĂNG KÝ" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="txtStatNotRegistered" Text="0" Foreground="#D97706" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Card 5: Suspended -->
+            <Border Grid.Column="4" Margin="4" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="#9333EA" BorderThickness="0,3,0,0" Padding="12,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="ShieldDismiss20" Foreground="#9333EA" Margin="0,0,6,0" />
+                        <TextBlock Text="BỊ ĐÌNH CHỈ" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="txtStatSuspended" Text="0" Foreground="#9333EA" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- Card 6: Error -->
+            <Border Grid.Column="5" Margin="4" CornerRadius="8" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="#DC2626" BorderThickness="0,3,0,0" Padding="12,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Warning20" Foreground="#DC2626" Margin="0,0,6,0" />
+                        <TextBlock Text="LỖI / CAPTCHA" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock x:Name="txtStatError" Text="0" Foreground="#DC2626" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Row 2: Data Sources & Settings Tabs -->
+        <Border Grid.Row="2" Margin="16,0,16,10" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="14,12">
+            <TabControl x:Name="tabSources" Background="Transparent" BorderThickness="0">
+                <!-- Tab 1: Google Sheet -->
+                <TabItem Header="📊 Google Sheets (Apps Script)">
+                    <Grid Margin="0,10,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Script URL Input -->
+                        <ui:TextBox x:Name="txtScriptUrl"
+                                    Grid.Row="0" Grid.Column="0"
+                                    PlaceholderText="Nhập Google Apps Script Web App URL (https://script.google.com/macros/s/.../exec)"
+                                    Margin="0,0,10,8" />
+
+                        <ui:Button x:Name="btnConnectSheet"
+                                   Grid.Row="0" Grid.Column="1"
+                                   Content="Kết nối Sheets"
+                                   Icon="{ui:SymbolIcon Link20}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,8"
+                                   Click="BtnConnectSheet_Click" />
+
+                        <ComboBox x:Name="cboSheets"
+                                  Grid.Row="0" Grid.Column="2"
+                                  Margin="0,0,10,8"
+                                  VerticalAlignment="Center" />
+
+                        <ui:Button x:Name="btnLoadSheetData"
+                                   Grid.Row="0" Grid.Column="3"
+                                   Content="Nạp Dữ Liệu Sheet"
+                                   Icon="{ui:SymbolIcon ArrowDownload20}"
+                                   Appearance="Primary"
+                                   Margin="0,0,0,8"
+                                   Click="BtnLoadSheetData_Click" />
+
+                        <!-- Options Row -->
+                        <StackPanel Grid.Row="1" Grid.ColumnSpan="4" Orientation="Horizontal" Margin="0,4,0,0">
+                            <CheckBox x:Name="chkAutoSaveSheet" Content="Tự động ghi kết quả trực tiếp lên Google Sheet khi hoàn thành mỗi email" IsChecked="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,24,0" />
+                            <CheckBox x:Name="chkSkipCheckedSheet" Content="Bỏ qua các dòng đã có kết quả (Live/Die/Registered...)" IsChecked="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </TabItem>
+
+                <!-- Tab 2: File TXT -->
+                <TabItem Header="📄 File TXT">
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <ui:TextBox x:Name="txtTxtPath"
+                                    Grid.Column="0"
+                                    PlaceholderText="Đường dẫn file TXT (hỗ trợ mọi định dạng chuỗi chứa email: Oak Park | MI | user@mail.com)"
+                                    Margin="0,0,10,0" />
+
+                        <ui:Button x:Name="btnBrowseTxt"
+                                   Grid.Column="1"
+                                   Content="Chọn file..."
+                                   Icon="{ui:SymbolIcon FolderOpen20}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,0"
+                                   Click="BtnBrowseTxt_Click" />
+
+                        <ui:Button x:Name="btnLoadTxtData"
+                                   Grid.Column="2"
+                                   Content="Nạp Dữ Liệu TXT"
+                                   Icon="{ui:SymbolIcon ArrowDownload20}"
+                                   Appearance="Primary"
+                                   Click="BtnLoadTxtData_Click" />
+                    </Grid>
+                </TabItem>
+
+                <!-- Tab 3: File Excel -->
+                <TabItem Header="📗 File Excel (.xlsx)">
+                    <Grid Margin="0,10,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <ui:TextBox x:Name="txtExcelPath"
+                                    Grid.Row="0" Grid.Column="0"
+                                    PlaceholderText="Đường dẫn file Excel (.xlsx) hoặc CSV chứa danh sách"
+                                    Margin="0,0,10,8" />
+
+                        <ui:Button x:Name="btnBrowseExcel"
+                                   Grid.Row="0" Grid.Column="1"
+                                   Content="Chọn file..."
+                                   Icon="{ui:SymbolIcon FolderOpen20}"
+                                   Appearance="Secondary"
+                                   Margin="0,0,10,8"
+                                   Click="BtnBrowseExcel_Click" />
+
+                        <ui:Button x:Name="btnLoadExcelData"
+                                   Grid.Row="0" Grid.Column="2"
+                                   Content="Nạp Dữ Liệu Excel"
+                                   Icon="{ui:SymbolIcon ArrowDownload20}"
+                                   Appearance="Primary"
+                                   Margin="0,0,0,8"
+                                   Click="BtnLoadExcelData_Click" />
+
+                        <CheckBox x:Name="chkSkipCheckedExcel"
+                                  Grid.Row="1" Grid.ColumnSpan="3"
+                                  Content="Bỏ qua các dòng đã có kết quả trong file Excel"
+                                  IsChecked="True" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    </Grid>
+                </TabItem>
+
+                <!-- Tab 4: Settings -->
+                <TabItem Header="⚙️ Cài Đặt Chạy">
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="30" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="30" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Thread count -->
+                        <TextBlock Grid.Column="0" Text="Số luồng song song:" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,8,0" />
+                        <ComboBox x:Name="cboThreads" Grid.Column="1" VerticalAlignment="Center">
+                            <ComboBoxItem Content="1 Luồng (An toàn nhất)" />
+                            <ComboBoxItem Content="2 Luồng (Khuyên dùng)" IsSelected="True" />
+                            <ComboBoxItem Content="3 Luồng" />
+                            <ComboBoxItem Content="4 Luồng" />
+                            <ComboBoxItem Content="5 Luồng" />
+                        </ComboBox>
+
+                        <!-- Delay -->
+                        <TextBlock Grid.Column="3" Text="Độ trễ mỗi lượt (ms):" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,8,0" />
+                        <ui:TextBox x:Name="txtDelay" Grid.Column="4" Text="1500" VerticalAlignment="Center" />
+
+                        <!-- Timeout -->
+                        <TextBlock Grid.Column="6" Text="Timeout (giây):" VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,8,0" />
+                        <ui:TextBox x:Name="txtTimeout" Grid.Column="7" Text="30" VerticalAlignment="Center" />
+
+                        <!-- Warning note -->
+                        <Border Grid.Column="8" Margin="20,0,0,0" Padding="10,6" Background="{DynamicResource SubtleFillColorSecondaryBrush}" CornerRadius="6" BorderBrush="#D97706" BorderThickness="1" VerticalAlignment="Center">
+                            <TextBlock Text="⚠️ Khuyến nghị: 1 - 2 luồng giúp giữ phiên ổn định và ít gặp Captcha PerimeterX." Foreground="#D97706" FontSize="11.5" TextWrapping="Wrap" />
+                        </Border>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Border>
+
+        <!-- Row 3: Action Buttons Toolbar -->
+        <Border Grid.Row="3" Margin="16,0,16,10" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="14,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Primary Captcha Warmup Button -->
+                <ui:Button x:Name="btnOpenBrowser"
+                           Grid.Column="0"
+                           Content="1. MỞ TRÌNH DUYỆT / GIẢI CAPTCHA"
+                           Icon="{ui:SymbolIcon ShieldCheckmark24}"
+                           Background="#6366F1"
+                           Foreground="White"
+                           FontWeight="Bold"
+                           Padding="14,8"
+                           ToolTip="Mở phiên trình duyệt chia sẻ để làm ấm và giải Captcha PerimeterX trước khi quét"
+                           Click="BtnOpenBrowser_Click" />
+
+                <!-- Process Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <ui:Button x:Name="btnStart"
+                               Content="BẮT ĐẦU"
+                               Icon="{ui:SymbolIcon Play20}"
+                               Appearance="Success"
+                               FontWeight="Bold"
+                               Padding="16,8"
+                               Margin="0,0,8,0"
+                               Click="BtnStart_Click" />
+
+                    <ui:Button x:Name="btnPause"
+                               Content="Tạm dừng"
+                               Icon="{ui:SymbolIcon Pause20}"
+                               Appearance="Caution"
+                               Padding="14,8"
+                               Margin="0,0,8,0"
+                               IsEnabled="False"
+                               Click="BtnPause_Click" />
+
+                    <ui:Button x:Name="btnStop"
+                               Content="Dừng lại"
+                               Icon="{ui:SymbolIcon Stop20}"
+                               Appearance="Danger"
+                               Padding="14,8"
+                               Margin="0,0,8,0"
+                               IsEnabled="False"
+                               Click="BtnStop_Click" />
+
+                    <ui:Button x:Name="btnExport"
+                               Content="Xuất kết quả"
+                               Icon="{ui:SymbolIcon ArrowDownload20}"
+                               Appearance="Secondary"
+                               Padding="14,8"
+                               Margin="0,0,8,0"
+                               Click="BtnExport_Click" />
+
+                    <ui:Button x:Name="btnClear"
+                               Content="Xóa bảng"
+                               Icon="{ui:SymbolIcon Delete20}"
+                               Appearance="Secondary"
+                               Padding="14,8"
+                               Click="BtnClear_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Row 4: DataGrid Results Area -->
+        <Border Grid.Row="4" Margin="16,0,16,10" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" CornerRadius="8" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" ClipToBounds="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Filter / Search Row -->
+                <Border Grid.Row="0" Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}" Padding="12,8" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="280" />
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Search Box -->
+                        <ui:TextBox x:Name="txtSearch"
+                                    Grid.Column="0"
+                                    PlaceholderText="🔍 Tìm kiếm email, dữ liệu..."
+                                    Margin="0,0,10,0"
+                                    TextChanged="TxtSearch_TextChanged" />
+
+                        <!-- Status Filter -->
+                        <ComboBox x:Name="cboFilterStatus"
+                                  Grid.Column="1"
+                                  Margin="0,0,10,0"
+                                  SelectionChanged="CboFilterStatus_SelectionChanged">
+                            <ComboBoxItem Content="Tất cả trạng thái" IsSelected="True" />
+                            <ComboBoxItem Content="Chờ duyệt" />
+                            <ComboBoxItem Content="Đang kiểm tra" />
+                            <ComboBoxItem Content="Đã đăng ký" />
+                            <ComboBoxItem Content="Chưa đăng ký" />
+                            <ComboBoxItem Content="Bị đình chỉ" />
+                            <ComboBoxItem Content="Lỗi / Captcha" />
+                        </ComboBox>
+
+                        <!-- Counter indicator -->
+                        <TextBlock x:Name="txtDisplayCount"
+                                   Grid.Column="3"
+                                   Text="Hiển thị: 0 dòng"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center"
+                                   FontWeight="SemiBold" />
+                    </Grid>
+                </Border>
+
+                <!-- WPF-UI DataGrid -->
+                <DataGrid x:Name="dgvResults"
+                          Grid.Row="1"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          IsReadOnly="True"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
+                          Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                          RowBackground="Transparent"
+                          AlternatingRowBackground="{DynamicResource SubtleFillColorSecondaryBrush}"
+                          BorderThickness="0"
+                          HeadersVisibility="Column"
+                          EnableRowVirtualization="True"
+                          VirtualizingStackPanel.IsVirtualizing="True"
+                          VirtualizingStackPanel.VirtualizationMode="Recycling"
+                          ScrollViewer.CanContentScroll="True">
+
+                    <!-- DataGrid Resources -->
+                    <DataGrid.Resources>
+                        <Style x:Key="CenterColumnHeaderStyle" TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="FontSize" Value="12" />
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="BorderThickness" Value="0,0,1,1" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                            <Setter Property="HorizontalContentAlignment" Value="Center" />
+                        </Style>
+                    </DataGrid.Resources>
+
+                    <!-- Styled Column Header -->
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="FontSize" Value="12" />
+                            <Setter Property="Padding" Value="12,10" />
+                            <Setter Property="BorderThickness" Value="0,0,1,1" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+
+                    <!-- Styled Row -->
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <Setter Property="FontSize" Value="12.5" />
+                            <Setter Property="MinHeight" Value="36" />
+                        </Style>
+                    </DataGrid.RowStyle>
+
+                    <DataGrid.Columns>
+                        <!-- Column 1: ID -->
+                        <DataGridTextColumn Header="#" Binding="{Binding Id}" Width="60" HeaderStyle="{StaticResource CenterColumnHeaderStyle}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Column 2: Raw Data -->
+                        <DataGridTextColumn Header="Dữ Liệu Gốc" Binding="{Binding RawData}" Width="2*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Column 3: Extracted Email -->
+                        <DataGridTextColumn Header="Email Bóc Tách" Binding="{Binding ExtractedEmail}" Width="1.5*">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter Property="Foreground" Value="#0284C7" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Column 4: Status Badge (Mở rộng, Căn giữa tiêu đề và nội dung) -->
+                        <DataGridTemplateColumn Width="230" HeaderStyle="{StaticResource CenterColumnHeaderStyle}">
+                            <DataGridTemplateColumn.Header>
+                                <TextBlock Text="Trạng Thái" HorizontalAlignment="Center" TextAlignment="Center" FontWeight="SemiBold" />
+                            </DataGridTemplateColumn.Header>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="6"
+                                            Padding="16,5"
+                                            Margin="6,3"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Background="{Binding StatusBackground}"
+                                            BorderBrush="{Binding StatusBorder}"
+                                            BorderThickness="1">
+                                        <TextBlock Text="{Binding StatusText}"
+                                                   Foreground="{Binding StatusForeground}"
+                                                   FontWeight="Bold"
+                                                   FontSize="12.5"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Column 5: Time -->
+                        <DataGridTextColumn Header="Thời Gian" Binding="{Binding CheckedTimeString}" Width="100" HeaderStyle="{StaticResource CenterColumnHeaderStyle}">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+                                    <Setter Property="FontSize" Value="12" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+
+        <!-- Row 5: Activity Log Area -->
+        <Expander Grid.Row="5" Margin="16,0,16,10" IsExpanded="False" Header="📝 Nhật ký hoạt động (Live Logs)" Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+            <Border Background="{DynamicResource ControlFillColorDefaultBrush}" CornerRadius="6" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="8" Margin="0,6,0,0">
+                <Grid Height="140">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBox x:Name="txtLogs"
+                             Grid.Row="0"
+                             IsReadOnly="True"
+                             VerticalScrollBarVisibility="Auto"
+                             Background="Transparent"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                             BorderThickness="0"
+                             FontFamily="Consolas, Courier New"
+                             FontSize="12"
+                             TextWrapping="Wrap" />
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                        <ui:Button Content="Xóa nhật ký" Appearance="Secondary" FontSize="11" Padding="8,2" Click="BtnClearLogs_Click" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Expander>
+
+        <!-- Row 6: Bottom Status Bar -->
+        <Border Grid.Row="6" Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}" Padding="16,6" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="lblStatusMsg"
+                           Grid.Column="0"
+                           Text="💡 Hướng dẫn: Bước 1: Bấm [1. MỞ TRÌNH DUYỆT / GIẢI CAPTCHA] -> Bước 2: Nạp dữ liệu -> Bước 3: Bấm [BẮT ĐẦU]"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Grid.Column="1"
+                           Text="Walmart Email Checker Pro • Developed by Yansuo"
+                           Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                           FontSize="11.5"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
+</ui:FluentWindow>
