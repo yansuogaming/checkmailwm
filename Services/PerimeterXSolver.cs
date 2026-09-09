@@ -36,40 +36,42 @@ namespace CheckMailWM2.Services
                         return 'NO';
                     }
 
-                    // 2. Kiểm tra container Captcha PerimeterX
+                    // 2. Kiểm tra container Captcha PerimeterX hiển thị
                     const px = document.querySelector(""#px-captcha, [id*='px-captcha'], div.px-modal"");
                     if (px) {
                         const style = window.getComputedStyle(px);
-                        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) {
-                            // Container đã bị ẩn -> không còn captcha
-                        } else {
-                            return 'YES';
+                        if (style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity || '1') > 0) {
+                            const r = px.getBoundingClientRect();
+                            if (r.width > 20 && r.height > 20) return 'YES';
                         }
                     }
 
                     // 3. Kiểm tra iframe Captcha
                     const iframes = document.querySelectorAll('iframe');
                     for (const ifr of iframes) {
-                        const src = (ifr.src || '') + ' ' + (ifr.title || '');
+                        const src = ((ifr.src || '') + ' ' + (ifr.title || '')).toLowerCase();
                         if (src.includes('captcha') || src.includes('perimeter') || src.includes('challenge')) {
                             const r = ifr.getBoundingClientRect();
                             if (r.width > 20 && r.height > 20) return 'YES';
                         }
                     }
 
-                    // 4. Kiểm tra URL và nội dung trang
-                    const url = window.location.href || '';
+                    // 4. Kiểm tra URL thử thách
+                    const url = (window.location.href || '').toLowerCase();
                     if (url.includes('/blocked') || url.includes('/challenge') || url.includes('/captcha')) {
                         return 'YES';
                     }
 
-                    const body = document.body ? (document.body.innerText || document.body.textContent || '') : '';
-                    const hasText = body.includes('Robot or human') || 
-                                    body.includes('Press & Hold') || 
-                                    body.includes('Press and Hold') || 
-                                    body.includes('Please verify you are a human') ||
-                                    body.includes('Verify your identity') ||
-                                    body.includes('Access Denied');
+                    // 5. Kiểm tra nội dung text trên trang (chuyển về chữ thường)
+                    const lower = (document.body ? (document.body.innerText || document.body.textContent || '') : '').toLowerCase();
+                    const hasText = lower.includes('robot or human') || 
+                                    lower.includes('press & hold') || 
+                                    lower.includes('press and hold') || 
+                                    lower.includes('activate and hold') ||
+                                    lower.includes('confirm that you\'re human') ||
+                                    lower.includes('please verify you are a human') ||
+                                    lower.includes('verify your identity') ||
+                                    lower.includes('access denied');
                     return hasText ? 'YES' : 'NO';
                 })();
             ";
@@ -82,7 +84,7 @@ namespace CheckMailWM2.Services
         /// <summary>
         /// Tự động định vị nút "Press & Hold", di chuột uốn lượn như người thật và nhấn giữ chuột.
         /// ĐẶC BIỆT: Nhả chuột ngay lập tức khi nút hoàn tất vòng tròn xanh & xuất hiện 3 chấm (...)
-        /// Không bắt người dùng phải đợi giữ tới 15 giây.
+        /// Đảm bảo nhấn giữ thực sự (tối thiểu 2 giây) và chỉ báo thành công khi Captcha đã biến mất thật sự.
         /// </summary>
         public static async Task<bool> AutoSolvePressAndHoldAsync(
             Microsoft.Web.WebView2.Wpf.WebView2 webView,
@@ -162,7 +164,7 @@ namespace CheckMailWM2.Services
                         // Ưu tiên 3: Iframe chứa Captcha
                         const iframes = document.querySelectorAll('iframe');
                         for (const ifr of iframes) {
-                            const src = (ifr.src || '') + ' ' + (ifr.title || '');
+                            const src = ((ifr.src || '') + ' ' + (ifr.title || '')).toLowerCase();
                             if (src.includes('captcha') || src.includes('perimeter') || src.includes('challenge')) {
                                 const c = getCenter(ifr);
                                 if (c) return JSON.stringify({ found: true, x: c.x, y: c.y, w: c.w, h: c.h, source: 'iframe' });
@@ -232,7 +234,7 @@ namespace CheckMailWM2.Services
                 _lastMouseX = targetX;
                 _lastMouseY = targetY;
 
-                // 4. NGẬP NGỪNG QUAN SÁT (Reaction Time: 120ms - 260ms) như người thật trước khi nhấn
+                // 4. NGẬP NGỪNG QUAN SÁT (Reaction Time: 140ms - 260ms) như người thật trước khi nhấn
                 int reactionTime = Random.Shared.Next(140, 260);
                 await Task.Delay(reactionTime, ct);
 
@@ -255,10 +257,9 @@ namespace CheckMailWM2.Services
                     })();
                 ");
 
-                onLog?.Invoke($"⏳ [PerimeterX] Đang nhấn giữ nút... Sẽ tự nhả chuột ngay khi chuyển sang 3 chấm (...) hoặc tối đa {maxHoldSeconds}s.");
+                onLog?.Invoke($"⏳ [PerimeterX] Đang nhấn giữ nút... Sẽ tự nhả ngay khi xuất hiện dấu 3 chấm (...) hoặc tối đa {maxHoldSeconds}s.");
 
                 var sw = Stopwatch.StartNew();
-                bool passed = false;
 
                 // 6. Vòng lặp nhấn giữ với độ rung tay sinh học & kiểm tra liên tục trạng thái hoàn thành
                 try
@@ -278,153 +279,112 @@ namespace CheckMailWM2.Services
                         await CallCdpMethodAsync(webView, "Input.dispatchMouseEvent", jitterMove);
                         await UpdateVisualCursorAsync(webView, currentHoldX, currentHoldY, isDown: true);
 
-                        // KIỂM TRA TRẠNG THÁI: NHẬN DIỆN NGAY KHI XUẤT HIỆN VÒNG XANH & 3 CHẤM (...)
-                        string statusCheckScript = @"
-                            (function() {
-                                try {
-                                    // 1. Form nhập email đã xuất hiện -> ĐÃ VƯỢT QUA HOÀN TOÀN
-                                    const emailInput = document.querySelector(""input[autocomplete='email'], input[name*='email' i], input[type='email'], input[data-automation-id='email-input']"");
-                                    if (emailInput && emailInput.offsetParent !== null) {
-                                        return 'PASSED';
-                                    }
-
-                                    // 2. Tìm container Captcha PerimeterX
-                                    const pxContainer = document.querySelector(""#px-captcha, [id*='px-captcha'], [class*='px-captcha'], div.px-modal"");
-
-                                    // Nếu container bị ẩn (display: none / visibility: hidden / opacity: 0) -> ĐÃ QUA
-                                    if (pxContainer) {
-                                        const cs = window.getComputedStyle(pxContainer);
-                                        if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) {
+                        // CHỈ KIỂM TRA NHẢ NÚT KHI ĐÃ NHẤN GIỮ TỐI THIỂU 2.0 GIÂY (Tránh tuyệt đối nhả sớm giả tạo)
+                        if (sw.ElapsedMilliseconds >= 2000)
+                        {
+                            string statusCheckScript = FormattableString.Invariant($@"
+                                (function(tX, tY) {{
+                                    try {{
+                                        // 1. Form nhập email đã xuất hiện -> ĐÃ VƯỢT QUA HOÀN TOÀN
+                                        const emailInput = document.querySelector(""input[autocomplete='email'], input[name*='email' i], input[type='email'], input[data-automation-id='email-input']"");
+                                        if (emailInput && emailInput.offsetParent !== null) {{
                                             return 'PASSED';
-                                        }
-                                    }
+                                        }}
 
-                                    // 3. KIỂM TRA TRẠNG THÁI NÚT ĐÃ CHUYỂN SANG VÒNG XANH & 3 CHẤM (...)
-                                    // A. Kiểm tra chữ trong container hoặc nút bấm
-                                    let btnText = '';
-                                    if (pxContainer) {
-                                        btnText = (pxContainer.innerText || pxContainer.textContent || '').trim();
-                                    } else {
-                                        const btns = document.querySelectorAll('button, [role=""button""], div');
-                                        for (let i = 0; i < btns.length; i++) {
-                                            const b = btns[i];
-                                            const r = b.getBoundingClientRect();
-                                            if (r.width > 60 && r.height > 25 && r.top < window.innerHeight && r.bottom > 0) {
-                                                btnText += ' ' + (b.innerText || b.textContent || '').trim();
-                                            }
-                                        }
-                                    }
+                                        // 2. Tìm phần tử nút bấm đang được nhấn giữ
+                                        let btn = document.elementFromPoint(tX, tY);
+                                        if (!btn) {{
+                                            const all = document.querySelectorAll('button, [role=""button""], div');
+                                            for (let i = 0; i < all.length; i++) {{
+                                                const r = all[i].getBoundingClientRect();
+                                                if (tX >= r.left && tX <= r.right && tY >= r.top && tY <= r.bottom) {{
+                                                    btn = all[i];
+                                                    break;
+                                                }}
+                                            }}
+                                        }}
+                                        if (!btn) {{
+                                            btn = document.querySelector('#px-captcha button, #px-captcha [role=""button""], #px-captcha');
+                                        }}
 
-                                    // Ký tự ba chấm dạng text: '...', '…' (\u2026), '···' (\u00B7), '•••' (\u2022), '. . .'
-                                    if (btnText.includes('...') || 
-                                        btnText.includes('\u2026') || 
-                                        btnText.includes('\u00B7\u00B7\u00B7') || 
-                                        btnText.includes('\u2022\u2022\u2022') || 
-                                        btnText.includes('. . .')) {
-                                        return 'RELEASE_NOW';
-                                    }
+                                        if (btn) {{
+                                            const text = (btn.innerText || btn.textContent || '').trim().toLowerCase();
 
-                                    // B. Kiểm tra các phần tử con bên trong nút/container
-                                    const rootEl = pxContainer || document.body;
-                                    if (rootEl) {
-                                        // Kiểm tra class hoặc id liên quan đến 3 chấm hoặc tiến trình hoàn tất
-                                        const dotEls = rootEl.querySelectorAll('[class*=""dot"" i], [class*=""ellipsis"" i], [class*=""loader"" i], [class*=""spinner"" i], [class*=""success"" i], [class*=""complete"" i], [class*=""done"" i]');
-                                        if (dotEls.length >= 2) {
-                                            return 'RELEASE_NOW';
-                                        }
+                                            // NẾU NÚT VẪN CÒN CHỮ 'HOLD' HOẶC 'PRESS' -> ĐANG GIỮ, CHẮC CHẮN CHƯA HOÀN THÀNH
+                                            if (text.includes('hold') || text.includes('press')) {{
+                                                return 'HOLDING';
+                                            }}
 
-                                        // Kiểm tra cấu trúc 3 phần tử con kích thước nhỏ (< 25px) xếp cạnh nhau (3 dấu chấm)
-                                        const allBoxes = rootEl.querySelectorAll('div, span, p');
-                                        for (let i = 0; i < allBoxes.length; i++) {
-                                            const box = allBoxes[i];
-                                            if (box.children && box.children.length === 3) {
-                                                const ch = Array.from(box.children);
-                                                const allSmall = ch.every(c => {
-                                                    const cr = c.getBoundingClientRect();
-                                                    return cr.width >= 2 && cr.width <= 25 && cr.height >= 2 && cr.height <= 25;
-                                                });
-                                                if (allSmall && box.getBoundingClientRect().top > 0) {
-                                                    return 'RELEASE_NOW';
-                                                }
-                                            }
-                                        }
+                                            // KHI ĐÃ KHÔNG CÒN CHỮ 'HOLD' HAY 'PRESS':
+                                            // Kiểm tra xem nút đã chuyển sang dấu 3 chấm (...) hoặc vòng tròn xanh chưa:
+                                            const hasDots = text.includes('...') || 
+                                                            text.includes('\u2026') || 
+                                                            text.includes('\u00B7\u00B7\u00B7') || 
+                                                            text.includes('\u2022\u2022\u2022') ||
+                                                            btn.querySelectorAll('[class*=""dot"" i], [class*=""ellipsis"" i], [class*=""loader"" i]').length > 0;
 
-                                        // C. KIỂM TRA MÀU SẮC XANH LÁ (GREEN CIRCLE / GREEN DOT / GREEN GLOW)
-                                        function isGreen(c) {
-                                            if (!c) return false;
-                                            const s = c.toLowerCase();
-                                            if (s.includes('#10b981') || s.includes('#059669') || s.includes('#22c55e') || 
-                                                s.includes('#16a34a') || s.includes('#00c853') || s.includes('#2ecc71') || 
-                                                s.includes('#34d399') || s.includes('#00e676')) {
-                                                return true;
-                                            }
-                                            const m = s.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-                                            if (m) {
-                                                const r = parseInt(m[1], 10);
-                                                const g = parseInt(m[2], 10);
-                                                const b = parseInt(m[3], 10);
-                                                if (g >= 115 && g > r * 1.25 && g > b * 1.1) return true;
-                                            }
-                                            return false;
-                                        }
+                                            function isGreen(val) {{
+                                                if (!val) return false;
+                                                const s = val.toLowerCase();
+                                                if (s.includes('#10b981') || s.includes('#059669') || s.includes('#22c55e') || s.includes('#16a34a') || s.includes('#00c853') || s.includes('#2ecc71')) return true;
+                                                const m = s.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/);
+                                                if (m) {{
+                                                    const r = parseInt(m[1], 10), g = parseInt(m[2], 10), b = parseInt(m[3], 10);
+                                                    const a = m[4] !== undefined ? parseFloat(m[4]) : 1.0;
+                                                    if (a > 0.4 && g >= 120 && g > r * 1.3 && g > b * 1.15) return true;
+                                                }}
+                                                return false;
+                                            }}
 
-                                        const subEls = rootEl.querySelectorAll('svg, circle, path, span, div');
-                                        for (let i = 0; i < subEls.length; i++) {
-                                            const el = subEls[i];
-                                            const cs = window.getComputedStyle(el);
-                                            if (isGreen(cs.backgroundColor) || 
-                                                isGreen(cs.borderColor) || 
-                                                isGreen(cs.color) || 
-                                                isGreen(cs.stroke) || 
-                                                isGreen(cs.fill) || 
-                                                isGreen(cs.boxShadow)) {
+                                            let hasGreen = false;
+                                            const sub = btn.querySelectorAll('*');
+                                            for (let i = 0; i < sub.length; i++) {{
+                                                const el = sub[i];
+                                                const cs = window.getComputedStyle(el);
+                                                if (isGreen(cs.backgroundColor) || isGreen(cs.borderColor) || isGreen(cs.color) || isGreen(cs.stroke) || isGreen(cs.fill) || isGreen(cs.boxShadow)) {{
+                                                    hasGreen = true;
+                                                    break;
+                                                }}
+                                                const f = el.getAttribute ? el.getAttribute('fill') : null;
+                                                const s = el.getAttribute ? el.getAttribute('stroke') : null;
+                                                if (isGreen(f) || isGreen(s)) {{
+                                                    hasGreen = true;
+                                                    break;
+                                                }}
+                                            }}
+
+                                            // CHỈ NHẢ KHI CÓ DẤU 3 CHẤM HOẶC VÒNG XANH VÀ KHÔNG CÒN CHỮ PRESS/HOLD
+                                            if (hasDots || hasGreen) {{
                                                 return 'RELEASE_NOW';
-                                            }
-                                            const fillAttr = el.getAttribute ? el.getAttribute('fill') : null;
-                                            const strokeAttr = el.getAttribute ? el.getAttribute('stroke') : null;
-                                            if (isGreen(fillAttr) || isGreen(strokeAttr)) {
-                                                return 'RELEASE_NOW';
-                                            }
-                                        }
+                                            }}
+                                        }}
 
-                                        // D. Kiểm tra biến mất của chữ 'Press & Hold' trong chính nút Captcha
-                                        // Khi nút hoàn thành, chữ 'Press & Hold' biến mất và chỉ còn biểu tượng / 3 chấm
-                                        if (pxContainer) {
-                                            const lowerText = btnText.toLowerCase();
-                                            if (!lowerText.includes('hold') && !lowerText.includes('press') && btnText.length < 50) {
-                                                return 'RELEASE_NOW';
-                                            }
-                                        }
-                                    }
+                                        return 'HOLDING';
+                                    }} catch(e) {{
+                                        return 'HOLDING';
+                                    }}
+                                }})({targetX:0.00}, {targetY:0.00});
+                            ");
 
-                                    return 'HOLDING';
-                                } catch(err) {
-                                    return 'HOLDING';
-                                }
-                            })();
-                        ";
+                            string statusRes = await ExecuteScriptAsync(webView, statusCheckScript);
+                            statusRes = statusRes?.Trim('"', ' ') ?? "";
 
-                        string statusRes = await ExecuteScriptAsync(webView, statusCheckScript);
-                        statusRes = statusRes?.Trim('"', ' ') ?? "";
+                            if (statusRes == "PASSED")
+                            {
+                                double elapsedSec = sw.ElapsedMilliseconds / 1000.0;
+                                onLog?.Invoke($"🎉 [PerimeterX] Captcha đã mở thành công sau {elapsedSec:0.1}s! Nhả nút ngay...");
+                                break;
+                            }
 
-                        if (statusRes == "PASSED")
-                        {
-                            passed = true;
-                            double elapsedSec = sw.ElapsedMilliseconds / 1000.0;
-                            onLog?.Invoke($"🎉 [PerimeterX] Captcha đã mở thành công sau {elapsedSec:0.1}s! Nhả nút ngay...");
-                            break;
+                            if (statusRes == "RELEASE_NOW")
+                            {
+                                double elapsedSec = sw.ElapsedMilliseconds / 1000.0;
+                                onLog?.Invoke($"🎉 [PerimeterX] Đã xuất hiện dấu 3 chấm (...) và vòng tròn xanh sau {elapsedSec:0.1}s! Nhả chuột ngay lập tức...");
+                                break;
+                            }
                         }
 
-                        // ĐÃ XUẤT HIỆN VÒNG TRÒN XANH & 3 CHẤM (...) -> NHẢ CHUỘT NGAY LẬP TỨC!
-                        if (statusRes == "RELEASE_NOW" && sw.ElapsedMilliseconds >= 500)
-                        {
-                            passed = true;
-                            double elapsedSec = sw.ElapsedMilliseconds / 1000.0;
-                            onLog?.Invoke($"🎉 [PerimeterX] Đã xuất hiện dấu ba chấm (...) và vòng tròn xanh sau {elapsedSec:0.1}s! Nhả chuột ngay lập tức...");
-                            break;
-                        }
-
-                        // Đợi 120 - 180ms ngẫu nhiên cho chu kỳ tiếp theo (phản xạ nhanh, nhả chuột ngay khi thấy 3 chấm)
+                        // Đợi 120 - 180ms ngẫu nhiên cho chu kỳ tiếp theo
                         await Task.Delay(Random.Shared.Next(120, 180), ct);
                     }
                 }
@@ -458,32 +418,31 @@ namespace CheckMailWM2.Services
                 // Tắt con trỏ ảo
                 await RemoveVisualCursorAsync(webView);
 
-                // 9. Chờ và kiểm tra xác thực từ máy chủ Walmart
-                onLog?.Invoke("🔄 [PerimeterX] Đã nhả nút, đang chờ máy chủ Walmart xác thực phiên...");
-                await Task.Delay(1000, ct);
+                // 9. Chờ và kiểm tra xác thực thực tế từ máy chủ Walmart
+                onLog?.Invoke("🔄 [PerimeterX] Đã nhả nút, đang chờ máy chủ Walmart xác nhận phiên...");
 
-                for (int i = 0; i < 7; i++)
+                bool confirmedPassed = false;
+                for (int i = 0; i < 12; i++) // Kiểm tra trong tối đa 6 giây (12 x 500ms)
                 {
                     if (ct.IsCancellationRequested) break;
+                    await Task.Delay(500, ct);
 
                     bool stillCaptcha = await IsCaptchaPresentAsync(webView);
                     if (!stillCaptcha)
                     {
-                        passed = true;
-                        onLog?.Invoke("✅ [PerimeterX] XÁC NHẬN: Đã vượt qua thử thách Captcha thành công!");
-                        return true;
+                        confirmedPassed = true;
+                        break;
                     }
-                    await Task.Delay(500, ct);
                 }
 
-                if (passed)
+                if (confirmedPassed)
                 {
-                    onLog?.Invoke("✅ [PerimeterX] Captcha đã giải thành công!");
+                    onLog?.Invoke("✅ [PerimeterX] XÁC NHẬN: Đã vượt qua thử thách Captcha thành công!");
                     return true;
                 }
                 else
                 {
-                    onLog?.Invoke("⚠️ [PerimeterX] Đã nhả nút nhưng Captcha chưa được máy chủ xác nhận.");
+                    onLog?.Invoke("⚠️ [PerimeterX] Đã nhả nút nhưng thử thách chưa vượt qua. Bạn có thể nhấn nút để thử lại hoặc tự tay giải.");
                     return false;
                 }
             }

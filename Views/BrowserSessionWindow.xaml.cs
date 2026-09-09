@@ -99,13 +99,15 @@ namespace CheckMailWM2.Views
                                 if (input) break;
                             }
 
-                            const bodyText = document.body ? (document.body.innerText || '') : '';
-                            const isCaptcha = bodyText.includes('Robot or human') || 
-                                              bodyText.includes('Press & Hold') || 
-                                              bodyText.includes('Press and Hold') ||
-                                              bodyText.includes('Verify your identity') ||
-                                              bodyText.includes('Please verify you are a human') ||
-                                              bodyText.includes('PerimeterX') ||
+                            const lowerText = (document.body ? (document.body.innerText || document.body.textContent || '') : '').toLowerCase();
+                            const isCaptcha = lowerText.includes('robot or human') || 
+                                              lowerText.includes('press & hold') || 
+                                              lowerText.includes('press and hold') ||
+                                              lowerText.includes('activate and hold') ||
+                                              lowerText.includes('confirm that you\'re human') ||
+                                              lowerText.includes('verify your identity') ||
+                                              lowerText.includes('please verify you are a human') ||
+                                              lowerText.includes('perimeterx') ||
                                               document.querySelector(""#px-captcha, [id*='captcha' i], iframe[src*='captcha' i], iframe[src*='perimeter' i], div.px-modal"") !== null;
 
                             if (input && !isCaptcha) {
