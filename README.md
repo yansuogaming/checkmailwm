@@ -41,11 +41,13 @@
 - Tùy chỉnh khoảng thời gian trễ ngẫu nhiên (Delay) giữa mỗi lần kiểm tra để mô phỏng hành vi người dùng thật và giảm nguy cơ bị khóa IP.
 - Quản lý trạng thái thông minh: Hỗ trợ **Bắt đầu**, **Tạm dừng**, **Tiếp tục** và **Dừng lại khẩn cấp** mà không làm mất dữ liệu.
 
-### 3. 🛡️ Cơ Chế Xử Lý Captcha & Làm Ấm Phiên (Anti-Bot Session Warmer)
-- Cửa sổ chuyên dụng: **`1. MỞ TRÌNH DUYỆT / GIẢI CAPTCHA`**.
-- Mở phiên duyệt web trực quan trên profile chia sẻ `UserData_Shared`.
-- Cho phép người dùng trực tiếp giải thử thách **PerimeterX (Press & Hold)** nếu Walmart yêu cầu.
-- Tự động nhận diện form đăng nhập và đồng bộ phiên (Cookies/Tokens) cho tất cả các luồng ngầm sử dụng lại.
+### 3. 🛡️ Tự Động Giải Captcha PerimeterX (Press & Hold Solver)
+- **Tự động nhấn giữ chuột thông minh (Auto Press & Hold)**: Sử dụng giao thức **Chrome DevTools Protocol (CDP)** (`Input.dispatchMouseEvent`) để tạo sự kiện giữ chuột vật lý nguyên bản (`isTrusted = true`) kèm chuyển động rung vi mô (micro-jitter ±1.5px) mô phỏng bàn tay người thật.
+- **Thời gian giữ linh hoạt tối đa 15 giây**: Hệ thống liên tục kiểm tra trạng thái DOM, khi nhận diện Captcha đã giải xong hoặc trang đăng nhập xuất hiện, hệ thống sẽ **ngay lập tức tự động nhả chuột** để tiếp tục tiến trình sớm nhất.
+- **Hoạt động đa tầng**:
+  - **Trong luồng quét ngầm**: Tự động phát hiện và giải trực tiếp mà không làm gián đoạn tiến trình quét.
+  - **Trong cửa sổ trực quan**: Tự động giải khi mở cửa sổ làm ấm phiên, tích hợp nút bấm **`🤖 Tự giải Captcha (15s)`** cho phép người dùng kích hoạt thủ công bất kỳ lúc nào.
+- **Đồng bộ phiên làm việc**: Dữ liệu phiên được lưu trữ trên profile dùng chung `UserData_Shared`, vượt 1 lần dùng chung cho tất cả các luồng.
 
 ### 4. 🧠 Nhận Diện Trạng Thái Email Toàn Diện
 Engine phân tích phản hồi DOM của Walmart chính xác:
@@ -87,8 +89,8 @@ Engine phân tích phản hồi DOM của Walmart chính xác:
 ### Bước 1: Khởi động và làm ấm phiên (Warm-up Session)
 1. Khởi chạy ứng dụng `CheckMailWM2.exe`.
 2. Bấm nút màu tím: **`1. MỞ TRÌNH DUYỆT / GIẢI CAPTCHA`**.
-3. Cửa sổ WebView2 sẽ mở trang xác thực của Walmart. Nếu xuất hiện captcha **"Press & Hold"**, hãy dùng chuột nhấn giữ để hoàn tất giải captcha.
-4. Khi trình duyệt vào tới ô nhập email, ứng dụng sẽ thông báo thành công và lưu phiên làm việc.
+3. Cửa sổ WebView2 sẽ mở trang xác thực của Walmart. Hệ thống sẽ **tự động định vị và nhấn giữ nút Press & Hold trong tối đa 15 giây**. Bạn cũng có thể bấm nút **`🤖 Tự giải Captcha (15s)`** hoặc tự tay nhấn giữ nếu muốn.
+4. Khi vượt qua thành công, ứng dụng sẽ thông báo và tự động lưu phiên làm việc.
 
 ### Bước 2: Nạp dữ liệu vào ứng dụng
 - **Dùng Google Sheets**: Chuyển sang tab Google Sheets -> Dán URL Web App -> Bấm `Kết nối Sheets` -> Chọn Tab làm việc -> Bấm `Nạp Dữ Liệu Sheet`.
@@ -143,6 +145,7 @@ CheckMailWM2/
 │   ├── AppSettings.cs           # Model lưu cấu hình ứng dụng
 │   └── GoogleSheetDto.cs        # DTO giao tiếp API Google Apps Script
 ├── Services/
+│   ├── PerimeterXSolver.cs      # Engine tự giải Captcha PerimeterX Press & Hold qua CDP
 │   ├── EmailExtractor.cs        # Regex trích xuất email & chuẩn hóa dữ liệu
 │   ├── WebViewUserDataManager.cs# Quản lý đường dẫn và dọn dẹp UserData_Shared
 │   ├── WalmartCheckerEngine.cs  # Engine điều khiển WebView2, phân tích DOM

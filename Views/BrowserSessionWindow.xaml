@@ -41,6 +41,14 @@
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Grid.Column="1" HorizontalAlignment="Right">
+                    <ui:Button x:Name="btnAutoSolve"
+                               Content="🤖 Tự giải Captcha (15s)"
+                               Icon="{ui:SymbolIcon PlayCircle24}"
+                               Appearance="Primary"
+                               FontWeight="SemiBold"
+                               Margin="0,0,8,0"
+                               Click="BtnAutoSolve_Click" />
+
                     <ui:Button x:Name="btnRefresh"
                                Content="Làm mới"
                                Icon="{ui:SymbolIcon ArrowClockwise20}"

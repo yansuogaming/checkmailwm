@@ -94,22 +94,36 @@ namespace CheckMailWM2.Services
 
                 if (!formReady)
                 {
-                    // Kiểm tra xem có phải dính Captcha thật không
-                    string checkCaptchaScript = @"
-                        (function() {
-                            const body = document.body ? (document.body.innerText || '') : '';
-                            return (body.includes('Robot or human') || body.includes('Press & Hold') || body.includes('Press and Hold') || document.querySelector('#px-captcha')) ? 'CAPTCHA' : 'NO';
-                        })();
-                    ";
-                    string cRes = await ExecuteScriptTextAsync(checkCaptchaScript);
-                    if (cRes?.Contains("CAPTCHA") == true)
+                    // Kiểm tra xem có dính Captcha không và tự động giải
+                    if (_webView != null && await PerimeterXSolver.IsCaptchaPresentAsync(_webView))
                     {
-                        OnLog?.Invoke($"[Luồng {_threadId}] ⚠️ Phát hiện Captcha trên trang đăng nhập.");
-                        return (CheckStatus.Error, "Phát hiện Captcha trên trang đăng nhập", true);
+                        OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút Press & Hold trong tối đa 15s...");
+                        bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(_webView, msg => OnLog?.Invoke($"[Luồng {_threadId}] {msg}"), cancellationToken, maxHoldSeconds: 15);
+                        if (solved)
+                        {
+                            OnLog?.Invoke($"[Luồng {_threadId}] ✅ Tự động vượt Captcha thành công! Đang tải lại form đăng nhập...");
+                            formReady = await ResetToFreshLoginFormAsync(cancellationToken);
+                        }
                     }
 
-                    OnLog?.Invoke($"[Luồng {_threadId}] Hết thời gian chờ tải form nhập email.");
-                    return (CheckStatus.Error, "Timeout load form", false);
+                    if (!formReady)
+                    {
+                        string checkCaptchaScript = @"
+                            (function() {
+                                const body = document.body ? (document.body.innerText || '') : '';
+                                return (body.includes('Robot or human') || body.includes('Press & Hold') || body.includes('Press and Hold') || document.querySelector('#px-captcha')) ? 'CAPTCHA' : 'NO';
+                            })();
+                        ";
+                        string cRes = await ExecuteScriptTextAsync(checkCaptchaScript);
+                        if (cRes?.Contains("CAPTCHA") == true)
+                        {
+                            OnLog?.Invoke($"[Luồng {_threadId}] ⚠️ Captcha PerimeterX chưa được giải.");
+                            return (CheckStatus.Error, "Phát hiện Captcha trên trang đăng nhập", true);
+                        }
+
+                        OnLog?.Invoke($"[Luồng {_threadId}] Hết thời gian chờ tải form nhập email.");
+                        return (CheckStatus.Error, "Timeout load form", false);
+                    }
                 }
 
                 OnLog?.Invoke($"[Luồng {_threadId}] Đang điền email {email}...");
@@ -323,7 +337,18 @@ namespace CheckMailWM2.Services
                     // Chỉ xác nhận là Captcha nếu đã qua 1.5s (trang mới đã tải từ mạng xong)
                     if (sw.ElapsedMilliseconds > 1500)
                     {
-                        OnLog?.Invoke($"[Luồng {_threadId}] ⚠️ Phát hiện Captcha trên trang đăng nhập.");
+                        OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút Press & Hold (tối đa 15s)...");
+                        if (_webView != null)
+                        {
+                            bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(_webView, msg => OnLog?.Invoke($"[Luồng {_threadId}] {msg}"), ct, maxHoldSeconds: 15);
+                            if (solved)
+                            {
+                                OnLog?.Invoke($"[Luồng {_threadId}] ✅ Tự động vượt Captcha thành công! Đang tải lại form...");
+                                sw.Restart();
+                                continue;
+                            }
+                        }
+                        OnLog?.Invoke($"[Luồng {_threadId}] ⚠️ Không thể tự giải Captcha trên trang đăng nhập.");
                         return false;
                     }
                 }
@@ -564,7 +589,18 @@ namespace CheckMailWM2.Services
                         }
                         if (status == "CAPTCHA")
                         {
-                            OnLog?.Invoke($"[Luồng {_threadId}] ⚠️ Phát hiện Captcha trên trang đăng nhập.");
+                            OnLog?.Invoke($"[Luồng {_threadId}] 🤖 Phát hiện Captcha PerimeterX sau khi submit! Đang tự động nhấn giữ nút Press & Hold (tối đa 15s)...");
+                            if (_webView != null)
+                            {
+                                bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(_webView, msg => OnLog?.Invoke($"[Luồng {_threadId}] {msg}"), ct, maxHoldSeconds: 15);
+                                if (solved)
+                                {
+                                    OnLog?.Invoke($"[Luồng {_threadId}] ✅ Đã tự vượt Captcha sau submit thành công! Tiếp tục phân tích kết quả...");
+                                    stopwatch.Restart();
+                                    continue;
+                                }
+                            }
+                            OnLog?.Invoke($"[Luồng {_threadId}] ⚠️ Không thể tự giải Captcha sau khi submit.");
                             return (CheckStatus.Error, "Phát hiện Captcha trên trang đăng nhập", true);
                         }
                         if (status == "SUSPENDED")

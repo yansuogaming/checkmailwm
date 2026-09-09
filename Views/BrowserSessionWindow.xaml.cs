@@ -13,6 +13,7 @@ namespace CheckMailWM2.Views
     {
         private CancellationTokenSource? _cts;
         private bool _isClosing = false;
+        private bool _isAutoSolving = false;
 
         public BrowserSessionWindow()
         {
@@ -110,6 +111,9 @@ namespace CheckMailWM2.Views
                             if (input && !isCaptcha) {
                                 return 'READY';
                             }
+                            if (isCaptcha) {
+                                return 'CAPTCHA';
+                            }
                             return 'WAITING';
                         })();
                     ";
@@ -130,12 +134,63 @@ namespace CheckMailWM2.Views
                         });
                         break;
                     }
+                    else if (result == "CAPTCHA" && !_isAutoSolving && !_isClosing)
+                    {
+                        _ = TriggerAutoSolveAsync(ct);
+                    }
                 }
                 catch
                 {
                     // Lỗi vòng lặp hủy tác vụ
                 }
             }
+        }
+
+        private async Task TriggerAutoSolveAsync(CancellationToken ct)
+        {
+            if (_isAutoSolving || _isClosing || webView == null) return;
+            _isAutoSolving = true;
+
+            try
+            {
+                btnAutoSolve.IsEnabled = false;
+                txtStatus.Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36));
+                txtStatus.Text = "🤖 Phát hiện Captcha PerimeterX! Đang tự động nhấn giữ nút Press & Hold (tối đa 15s)...";
+
+                bool solved = await PerimeterXSolver.AutoSolvePressAndHoldAsync(
+                    webView,
+                    msg => Dispatcher.Invoke(() => txtStatus.Text = msg),
+                    ct,
+                    maxHoldSeconds: 15);
+
+                if (solved && !_isClosing)
+                {
+                    txtStatus.Foreground = new SolidColorBrush(Color.FromRgb(52, 211, 153));
+                    txtStatus.Text = "✅ ĐÃ TỰ ĐỘNG VƯỢT QUA CAPTCHA THÀNH CÔNG! Đang lưu phiên và đóng...";
+                    await Task.Delay(1500, ct);
+                    CloseWithSuccess();
+                }
+                else if (!solved && !_isClosing)
+                {
+                    txtStatus.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+                    txtStatus.Text = "⚠️ Chưa vượt qua được Captcha sau 15s. Bạn có thể bấm [Tự giải Captcha] để thử lại hoặc tự tay nhấn giữ.";
+                }
+            }
+            catch (Exception ex)
+            {
+                txtStatus.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+                txtStatus.Text = $"❌ Lỗi tự giải Captcha: {ex.Message}";
+            }
+            finally
+            {
+                _isAutoSolving = false;
+                btnAutoSolve.IsEnabled = true;
+            }
+        }
+
+        private void BtnAutoSolve_Click(object sender, RoutedEventArgs e)
+        {
+            _ = TriggerAutoSolveAsync(_cts?.Token ?? CancellationToken.None);
         }
 
         private void BtnRefresh_Click(object sender, RoutedEventArgs e)
